@@ -5,6 +5,7 @@ import os
 import json
 import argparse
 import configparser
+import time
 
 url_root = "http://164.90.158.133:8080"
 url_get_speech = "/to_speech"
@@ -38,6 +39,7 @@ def get_speeches(menu, customers, sentences):
     print("Log:\t%s"%result.text)
     if result.status_code == 200:
         while True:
+            time.sleep(5)
             result = requests.get(url_root+url_get_audios, stream=True)
             if result.status_code == 200:
                 with open("./speech_audios.zip", "wb") as f:

@@ -264,6 +264,7 @@ async def is_ready(request):
         ps.pop()
         with open("./audios.zip", "rb") as f:
             audios = f.read()
+        os.remove("./audios.zip")
         return web.Response(status=200, body=audios)
     else:
         return web.Response(status=404, text="busy")
