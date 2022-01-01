@@ -6,6 +6,7 @@ import json
 import argparse
 import configparser
 import time
+from tqdm import tqdm
 
 url_root = "http://164.90.158.133:8080"
 url_get_speech = "/to_speech"
@@ -34,18 +35,33 @@ def get_speeches(menu, customers, sentences):
     req["customers"] = read_config(customers)
     req["sentences"] = read_config(sentences)
     result = requests.post(url_root+url_get_speech, json=req)
+    prog_old = 0
+    prog_new = 0
     # download the file when it is ready
     # or maybe we can print a progress bar here
-    print("Log:\t%s"%result.text)
-    if result.status_code == 200:
+    if result.status_code != 200:
+        print("Log:\t%s"%result.text)
+    else:
+        print("Log:\t%s"%result.text)
+        pid = result.text.split(" ")[-1]
+        bar = tqdm()
+        bar.total = 100
         while True:
-            time.sleep(5)
-            result = requests.get(url_root+url_get_audios, stream=True)
+            # update every 10s
+            time.sleep(10)
+            result = requests.post(url_root+url_get_audios, data=pid, stream=True)
             if result.status_code == 200:
                 with open("./speech_audios.zip", "wb") as f:
                     f.write(result.content)
                 print("log:\tsaved all files to ./speech_audios.zip")
                 break
+            else:
+                try:
+                    prog_old = prog_new
+                    prog_new = float(result.text)
+                    bar.update(prog_new - prog_old)
+                except:
+                    print("log:\t%s"%result.text)
 
 # get and save speakers into ./speakers.ini
 def get_speakers(path_to_speaker):

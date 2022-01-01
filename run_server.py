@@ -5,10 +5,12 @@ import urllib.parse
 import configparser
 import copy
 import shutil
+import random
 from multiprocessing import Process
 from random import choice
 from aiohttp import web
 
+MAX_TASK = 4
 '''
 text and speech generation
 '''
@@ -29,13 +31,16 @@ speakers = {'ED\n': 0, 'p225': 1, 'p226': 2, 'p227': 3, 'p228': 4, 'p229': 5,
     'p330': 90, 'p333': 91, 'p334': 92, 'p335': 93, 'p336': 94, 'p339': 95, 'p340': 96, 
     'p341': 97, 'p343': 98, 'p345': 99, 'p347': 100, 'p351': 101, 'p360': 102, 'p361': 103, 
     'p362': 104, 'p363': 105, 'p364': 106, 'p374': 107, 'p376': 108}
+# we need to pick up some speakers whoes vioce is ditinguishable
+speakers_selected = ["p225", "p233", "p335", "p364"]
 
 # let's put more template if possible
+'''
 greatings = ["", "Hello! ", "Hi! "]
 first_st = ["I wish to, emmmmmmmmmmm, have a ", "em, I want a ", "I'd like a ", "I will have the "]
 rest_st = [" and a ", ". I also want a ", " with a ", " ", ", emmmmmmmmmmm, and the ", ". Oh, and also a "]
 end_st = [". That's all, thanks", ". Thank you!", ". Thanks!"]
-
+'''
 def to_base64():
     '''
     A helper function to read the wav file and convert it to base64
@@ -50,7 +55,7 @@ def text_to_speech(text, speaker, outpath):
     cmd += "\""+text+"\""
     cmd += " --speaker_idx %s"%speaker
     cmd += " --use_cuda true"
-    cmd += " --out_path ./audio_output/" + outpath
+    cmd += " --out_path " + outpath
     os.system(cmd)
 
 def gen_text_old(request):
@@ -74,84 +79,165 @@ def gen_text_old(request):
     st = "\"" + st + "\""
     return st, speaker
 
-def order_to_text(order, menu):
+def order_to_text(order):
     order_real_st = []
-    order_real = {}
-    for key in order:
-        order_real_st.append(menu[key])
-        order_real[key] = menu[key]
+    order_key = []
+    for food in order:
+        order_real_st.append(food.replace("_", " "))
+        order_key.append(food.lower())
     if len(order_real_st) > 1:
         order_real_st[-1] = "and " + order_real_st[-1]
-    return ", ".join(order_real_st), order_real
+    return ", ".join(order_real_st), order_key
 
-def gen_text(customers, menu, sentences):
+def gen_text(customers, menu, sentences, gen_all=False):
     # return the dict of file name and text content and speaker list
+    # if all is true, then generate all possible sentences
     texts = {}
+    beverages = [f.lower() for f in menu["beverages"]]
+
+    def sample_st_key(iidx):
+        st_keys = list(sentences[incident_key[iidx]].keys())
+        try:
+            st_keys.remove("s00")
+        except:
+            # do nothing
+            pass
+        st_key = random.sample(st_keys, 1)[0]
+        return st_key
+
     for c_key in customers:
         incident_key = list(sentences.keys())
         incident_key.sort()
         speaker = customers[c_key]["speaker"]
-        order_st, order = order_to_text(customers[c_key]["meal_order"], menu)
-        extra_order_st, extra_order = order_to_text(customers[c_key]["extra_order"], menu)
+        incidents = customers[c_key]["incidents"]
+        order_st, order = order_to_text(customers[c_key]["meal_order"])
+        extra_order_st, extra_order = order_to_text(customers[c_key]["extra_order"])
+        _, replace_order = order_to_text(customers[c_key]["replace_order"])
+        
         # ReadyToOrder
-        for st_key in sentences[incident_key[0]]:
-            name = c_key + incident_key[0] + st_key + ".wav"
-            texts[name] = [sentences[incident_key[0]][st_key].replace("_", order_st), speaker]
+        if "1" in incidents and gen_all == False:
+            greeting = sentences[incident_key[0]].get("s00", "")
+            st_key = sample_st_key(0)
+            name = c_key + incident_key[0] + ".wav"
+            texts[name] = [greeting + ' ' + sentences[incident_key[0]][st_key].replace("_", order_st), speaker]
+        else:
+            for st_key in sentences[incident_key[0]]:
+                if st_key == "s00": continue
+                greeting = sentences[incident_key[0]].get("s00", "")
+                name = c_key + incident_key[0] + st_key + ".wav"
+                texts[name] = [greeting + ' ' + sentences[incident_key[0]][st_key].replace("_", order_st), speaker]
 
         # WantFoodIncident
-        for st_key in sentences[incident_key[1]]:
+        if "2" in incidents and gen_all == False:
+            greeting = sentences[incident_key[1]].get("s00", "")
+            st_key = sample_st_key(1)
             for food_key in order:
-                name = c_key + incident_key[1] + st_key + food_key + ".wav"
-                texts[name] = [sentences[incident_key[1]][st_key].replace("_", order[food_key]), speaker]
+                name = c_key + incident_key[1] + food_key + ".wav"
+                texts[name] = [greeting + ' ' + sentences[incident_key[1]][st_key].replace("_", food_key.replace("_", " ")), speaker]   
+        else:
+            greeting = sentences[incident_key[1]].get("s00", "")
+            for st_key in sentences[incident_key[1]]:
+                if st_key == "s00": continue
+                for food_key in order:
+                    name = c_key + incident_key[1] + st_key + food_key + ".wav"
+                    texts[name] = [greeting + ' ' + sentences[incident_key[1]][st_key].replace("_", order[food_key]), speaker]
 
         # CheckOutIncident
-        for st_key in sentences[incident_key[2]]:
-            name = c_key + incident_key[2] + st_key + ".wav"
-            texts[name] = [sentences[incident_key[2]][st_key], speaker]
+        if "3" in incidents and gen_all == False:
+            st_key = sample_st_key(2)
+            name = c_key + incident_key[2] + ".wav"
+            texts[name] = [sentences[incident_key[2]][st_key], speaker]            
+        else:
+            for st_key in sentences[incident_key[2]]:
+                name = c_key + incident_key[2] + st_key + ".wav"
+                texts[name] = [sentences[incident_key[2]][st_key], speaker]
 
         # CreditCardIncident
-        for st_key in sentences[incident_key[3]]:
-            name = c_key + incident_key[3] + st_key + ".wav"
+        if "4" in incidents and gen_all == False:
+            st_key = sample_st_key(3)
+            name = c_key + incident_key[3] + ".wav"
             texts[name] = [sentences[incident_key[3]][st_key], speaker]
+        else:
+            for st_key in sentences[incident_key[3]]:
+                name = c_key + incident_key[3] + st_key + ".wav"
+                texts[name] = [sentences[incident_key[3]][st_key], speaker]
 
         # OrderMoreIncident
-        for st_key in sentences[incident_key[4]]:
-            name = c_key + incident_key[4] + st_key + ".wav"
-            texts[name] = [sentences[incident_key[4]][st_key].replace("_", extra_order_st), speaker]
+        if "5" in incidents and gen_all == False:
+            st_key = sample_st_key(4)
+            name = c_key + incident_key[4] + ".wav"
+            greeting = sentences[incident_key[4]].get("s00", "")
+            texts[name] = [greeting + ' ' + sentences[incident_key[4]][st_key].replace("_", extra_order_st), speaker]
+        else:
+            greeting = sentences[incident_key[4]].get("s00", "")
+            for st_key in sentences[incident_key[4]]:
+                if st_key == "s00": continue
+                name = c_key + incident_key[4] + st_key + ".wav"
+                texts[name] = [greeting + ' ' + sentences[incident_key[4]][st_key].replace("_", extra_order_st), speaker]
 
         # DropDrinkIncident
-        for st_key in sentences[incident_key[5]]:
+        if "6" in incidents and gen_all == False:
+            st_key = sample_st_key(5)
             for food_key in order:
-                if "m3" not in food_key: continue
-                name = c_key + incident_key[5] + st_key + food_key + ".wav"
-                texts[name] = [sentences[incident_key[5]][st_key].replace("_", order[food_key]), speaker]
+                if food_key not in beverages: continue
+                name = c_key + incident_key[5] + food_key + ".wav"
+                texts[name] = [sentences[incident_key[5]][st_key].replace("_", food_key.replace("_", " ")), speaker]       
+        else:
+            for st_key in sentences[incident_key[5]]:
+                for food_key in order:
+                    if food_key not in beverages: continue
+                    name = c_key + incident_key[5] + st_key + food_key + ".wav"
+                    texts[name] = [sentences[incident_key[5]][st_key].replace("_", food_key.replace("_", " ")), speaker]
 
         # FoodReplacementIncident
-        for st_key in sentences[incident_key[6]]:
+        if "7" in incidents and gen_all == False:
+            st_key = sample_st_key(6)
             for food_key in order:
-                if "m3" in food_key: continue
-                name = c_key + incident_key[6] + st_key + food_key + ".wav"
-                texts[name] = [sentences[incident_key[6]][st_key].replace("_", order[food_key]), speaker]
+                if food_key in beverages: continue
+                name = c_key + incident_key[5] + food_key + ".wav"
+                texts[name] = [sentences[incident_key[5]][st_key].replace("_", food_key.replace("_", " ")), speaker]       
+        else:
+            for st_key in sentences[incident_key[6]]:
+                for food_key in order:
+                    if food_key in beverages: continue
+                    name = c_key + incident_key[6] + st_key + food_key + ".wav"
+                    texts[name] = [sentences[incident_key[6]][st_key].replace("_", food_key.replace("_", " ")), speaker]
     return texts
 
 def read_customer(customers_text):
-    # return customer list, order list, extra order list, incident list
+    # return customer list, order list, extra order list, replace order list, incident list
     customers_ini = configparser.ConfigParser()
     customers_ini.read_string(customers_text)
     customers = {}
+    
+    # for each group random assign a unique speaker ID
+    spk_idx = []
+    group_nums = int(remove_comment(customers_ini["General"]["totCustGroup"]))
+    for _ in range(group_nums):
+        spk_idx.append(random.sample(speakers_selected, len(speakers_selected)))
+
+    # read and format customer info
     for sec in customers_ini:
         if sec.lower() == "default": continue
         if "-Customer" in sec:
             g, c = sec.split("-")
-            g = "g%d"%int(g.strip("Group"))
-            c = "c%d"%int(c.strip("Customer"))
+            g_idx = int(g.strip("Group")) # group index
+            c_idx = int(c.strip("Customer")) -1 # customer index
+            g = "g%d"%g_idx
+            c = "c%d"%(c_idx + 1)
             name = g + c
             customers[name] = {}
-            customers[name]["speaker"] = customers_ini[sec]["speaker"]
-            customers[name]["meal_order"] = customers_ini[sec]["mealOrder"].split(",")
-            customers[name]["extra_order"] = customers_ini[sec]["extraOrder"].split(",")
-            customers[name]["incidents"] = customers_ini[sec]["IncidentOrder"].split(",")
+            # we need to assign a speaker to each customer
+            customers[name]["speaker"] = spk_idx[g_idx][c_idx]
+            customers[name]["meal_order"] = remove_comment(customers_ini[sec]["mealOrder"]).split(",")
+            customers[name]["extra_order"] = remove_comment(customers_ini[sec]["extraOrder"]).split(",")
+            customers[name]["replace_order"] = remove_comment(customers_ini[sec]["replaceOrder"]).split(",")
+            customers[name]["incidents"] = remove_comment(customers_ini[sec]["IncidentOrder"]).split(",")
+            
     return customers
+
+def remove_comment(value):
+    return value.split(";")[0]
 
 def read_sentences(sentences_text):
     # return sentence template list per incidents
@@ -165,7 +251,8 @@ def read_sentences(sentences_text):
         idx += 1
         st_template[name] = {}
         for st_key in sentences_ini[sec].keys():
-            st_template[name][st_key] = sentences_ini[sec][st_key]
+            st_template[name][st_key] = \
+            remove_comment(sentences_ini[sec][st_key])
     return st_template        
 
 def read_menu(menu_text):
@@ -176,9 +263,8 @@ def read_menu(menu_text):
     for sec in menu_ini:
         if sec.lower() == "default": continue
         for key in menu_ini[sec]:
-            menu[key] = menu_ini[sec][key]
+            menu[key] = remove_comment(menu_ini[sec][key])
     return menu
-
 '''
 HTTP server
 '''
@@ -239,18 +325,16 @@ async def welcome(request):
 @routes.post("/to_speech")
 async def to_speech(request):
     req = await request.json()
-    if len(ps) == 0:
+    if len(ps) <= MAX_TASK:
         sentences = read_sentences(req["sentences"])
         menu = read_menu(req["menu"])
         customers = read_customer(req["customers"])
-        texts = gen_text(customers, menu, sentences)
-        # clean up all exsiting files
-        print("Log:\tclean up output folder")
-        for f in os.listdir("./audio_output"):
-            os.remove(os.path.join("./audio_output", f))
+        texts = gen_text(customers, menu, sentences)   
+        
+        # create a non-block sub-process to generate audioes
         p = create_job(to_speech_multi_proc, texts)
         ps.append(p)
-        return web.Response(text="processing...")
+        return web.Response(text="processing with pid %s"%str(p.pid))
     else:
         return web.Response(status=404, text="server busy, please try again later")
 
@@ -258,22 +342,47 @@ async def to_speech(request):
 async def talk(request):
     return web.Response(text="under construction")
 
-@routes.get("/is_ready")
+# need fix later
+@routes.post("/is_ready")
 async def is_ready(request):
-    if os.path.exists("./audios.zip"):
-        ps.pop()
-        with open("./audios.zip", "rb") as f:
+    pid = await request.text()
+    target_file = "./audio_output_%s.zip"%(str(pid))
+    if os.path.exists(target_file):
+        print("log:\tsend files to client")
+        with open(target_file, "rb") as f:
             audios = f.read()
-        os.remove("./audios.zip")
+        os.remove(target_file)
         return web.Response(status=200, body=audios)
     else:
-        return web.Response(status=404, text="busy")
+        if os.path.exists("progress_%s.txt"%str(pid)):
+            with open("progress_%s.txt"%str(pid), "r") as f:
+                progress = f.read()
+            return web.Response(status=404, text="%s"%progress)
+        else:
+            return web.Response(status=404, text="task is not found")
 
 def to_speech_multi_proc(texts):
+    text_count = 1
+    text_total = len(texts)
+    pid = str(os.getpid())
     for file_name in texts: 
         text, speaker = texts[file_name]
-        text_to_speech(text, speaker, file_name)
-    shutil.make_archive("./audios.zip", 'zip', "./audio_output/")
+        file_path = "./audio_output_%s/"%pid
+        if os.path.exists(file_path) == False:
+            os.mkdir(file_path)
+        text_to_speech(text, speaker, os.path.join(file_path, file_name))
+        
+        # record the progress
+        with open("progress_%s.txt"%str(pid), "w") as f:
+            f.write("%.2f"%(text_count /  text_total * 100))
+        text_count += 1
+
+    shutil.make_archive("./audio_output_%s"%(str(pid)), 'zip', "./audio_output_%s"%(str(pid)))
+    
+    # clean up
+    os.remove("progress_%s.txt"%str(pid))
+    shutil.rmtree("./audio_output_%s"%(str(pid)))
+    ps.pop()
 
 def create_job(target, *args):
     p = Process(target=target, args=args)
