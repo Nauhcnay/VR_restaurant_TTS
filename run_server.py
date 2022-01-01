@@ -351,7 +351,9 @@ async def is_ready(request):
         print("log:\tsend files to client")
         with open(target_file, "rb") as f:
             audios = f.read()
+        # clean up
         os.remove(target_file)
+        ps.pop()
         return web.Response(status=200, body=audios)
     else:
         if os.path.exists("progress_%s.txt"%str(pid)):
@@ -382,7 +384,6 @@ def to_speech_multi_proc(texts):
     # clean up
     os.remove("progress_%s.txt"%str(pid))
     shutil.rmtree("./audio_output_%s"%(str(pid)))
-    ps.pop()
 
 def create_job(target, *args):
     p = Process(target=target, args=args)
