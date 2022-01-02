@@ -6,6 +6,7 @@ import json
 import argparse
 import configparser
 import time
+import zipfile
 from tqdm import tqdm
 
 url_root = "http://164.90.158.133:8080"
@@ -29,7 +30,7 @@ def is_ready():
     pass
 
 # get all speech audio files and unzip them into './audios/'
-def get_speeches(menu, customers, sentences):
+def get_speeches(menu, customers, sentences, output):
     req = {}
     req["menu"] = read_config(menu)
     req["customers"] = read_config(customers)
@@ -43,25 +44,33 @@ def get_speeches(menu, customers, sentences):
         print("Log:\t%s"%result.text)
     else:
         print("Log:\t%s"%result.text)
-        pid = result.text.split(" ")[-1]
-        bar = tqdm()
-        bar.total = 100
-        while True:
-            # update every 10s
-            time.sleep(10)
-            result = requests.post(url_root+url_get_audios, data=pid, stream=True)
-            if result.status_code == 200:
-                with open("./speech_audios.zip", "wb") as f:
-                    f.write(result.content)
-                print("log:\tsaved all files to ./speech_audios.zip")
-                break
-            else:
-                try:
-                    prog_old = prog_new
-                    prog_new = float(result.text)
-                    bar.update(prog_new - prog_old)
-                except:
-                    print("log:\t%s"%result.text)
+        if "processing" in result.text:
+            pid = result.text.split(" ")[-1]
+            bar = tqdm()
+            bar.total = 100
+            while True:
+                # update every 10s
+                time.sleep(5)
+                result = requests.post(url_root+url_get_audios, data=pid, stream=True)
+                if result.status_code == 200:
+                    if os.path.exists(output) == False:
+                        os.mkdir(output)
+                    zip_path_temp = os.path.join(output, "speech_audios.zip")
+                    with open(zip_path_temp, "wb") as f:
+                        f.write(result.content)
+                    with zipfile.ZipFile(zip_path_temp, 'r') as zip_ref:
+                        zip_ref.extractall(output)
+
+                    # clean up
+                    os.remove(zip_path_temp)
+                    break
+                else:
+                    try:
+                        prog_old = prog_new
+                        prog_new = float(result.text)
+                        bar.update(prog_new - prog_old)
+                    except:
+                        pass
 
 # get and save speakers into ./speakers.ini
 def get_speakers(path_to_speaker):
@@ -96,17 +105,19 @@ if __name__ == "__main__":
         help="get all speaker id and put them into ./speaker.ini")
     parser.add_argument("--menu", type=str, default='./Menu.ini',
         help="the path to menu config file, default is ./Menu.ini")
-    parser.add_argument("--customers", type=str, default='./Customer.ini',
+    parser.add_argument("--customers", type=str, default='./Customer (1).ini',
         help="the path to customer config file, default is ./Customer.ini")
     parser.add_argument("--sentences", type=str, default='./Sentences.ini',
         help="the path to sentence template file, default is ./Sentences.ini")
     parser.add_argument("--speakers", type=str, default='./Speakers.ini',
         help="the path to save speaker keys, default is ./Speakers.ini")
+    parser.add_argument("--output", type=str, default='./speech_audios',
+        help="the path to save generated audios")
     args = parser.parse_args()
 
     # send request and get result
     if args.speech:
-        get_speeches(args.menu, args.customers, args.sentences)
+        get_speeches(args.menu, args.customers, args.sentences, args.output)
     elif args.speaker:
         get_speakers(args.speakers)
     else:

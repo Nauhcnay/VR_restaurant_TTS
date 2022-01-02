@@ -83,11 +83,15 @@ def order_to_text(order):
     order_real_st = []
     order_key = []
     for food in order:
+        if "none" in food.lower(): continue
         order_real_st.append(food.replace("_", " "))
-        order_key.append(food.lower())
+        order_key.append(food.lower().strip(" "))
     if len(order_real_st) > 1:
         order_real_st[-1] = "and " + order_real_st[-1]
-    return ", ".join(order_real_st), order_key
+    if len(order_real_st) > 0:
+        return ", ".join(order_real_st), order_key
+    else:
+        return [], []
 
 def gen_text(customers, menu, sentences, gen_all=False):
     # return the dict of file name and text content and speaker list
@@ -113,14 +117,17 @@ def gen_text(customers, menu, sentences, gen_all=False):
         order_st, order = order_to_text(customers[c_key]["meal_order"])
         extra_order_st, extra_order = order_to_text(customers[c_key]["extra_order"])
         _, replace_order = order_to_text(customers[c_key]["replace_order"])
-        
         # ReadyToOrder
         if "1" in incidents and gen_all == False:
             greeting = sentences[incident_key[0]].get("s00", "")
             st_key = sample_st_key(0)
+            # generate greeting
+            name = c_key + incident_key[0] + "s00" + ".wav"
+            texts[name] = [greeting, speaker]
+            # generate sentence
             name = c_key + incident_key[0] + ".wav"
-            texts[name] = [greeting + ' ' + sentences[incident_key[0]][st_key].replace("_", order_st), speaker]
-        else:
+            texts[name] = [sentences[incident_key[0]][st_key].replace("_", order_st), speaker]
+        elif gen_all:
             for st_key in sentences[incident_key[0]]:
                 if st_key == "s00": continue
                 greeting = sentences[incident_key[0]].get("s00", "")
@@ -131,10 +138,13 @@ def gen_text(customers, menu, sentences, gen_all=False):
         if "2" in incidents and gen_all == False:
             greeting = sentences[incident_key[1]].get("s00", "")
             st_key = sample_st_key(1)
+            # generate greeting
+            name = c_key + incident_key[1] + "s00" + ".wav"
+            texts[name] = [greeting, speaker]
             for food_key in order:
                 name = c_key + incident_key[1] + food_key + ".wav"
-                texts[name] = [greeting + ' ' + sentences[incident_key[1]][st_key].replace("_", food_key.replace("_", " ")), speaker]   
-        else:
+                texts[name] = [sentences[incident_key[1]][st_key].replace("_", food_key.replace("_", " ")), speaker]   
+        elif gen_all:
             greeting = sentences[incident_key[1]].get("s00", "")
             for st_key in sentences[incident_key[1]]:
                 if st_key == "s00": continue
@@ -145,9 +155,13 @@ def gen_text(customers, menu, sentences, gen_all=False):
         # CheckOutIncident
         if "3" in incidents and gen_all == False:
             st_key = sample_st_key(2)
+            # generate greeting
+            name = c_key + incident_key[2] + "s00" + ".wav"
+            texts[name] = [greeting, speaker]
+            # generate sentence
             name = c_key + incident_key[2] + ".wav"
-            texts[name] = [sentences[incident_key[2]][st_key], speaker]            
-        else:
+            texts[name] = [sentences[incident_key[2]][st_key], speaker]
+        elif gen_all:
             for st_key in sentences[incident_key[2]]:
                 name = c_key + incident_key[2] + st_key + ".wav"
                 texts[name] = [sentences[incident_key[2]][st_key], speaker]
@@ -157,7 +171,7 @@ def gen_text(customers, menu, sentences, gen_all=False):
             st_key = sample_st_key(3)
             name = c_key + incident_key[3] + ".wav"
             texts[name] = [sentences[incident_key[3]][st_key], speaker]
-        else:
+        elif gen_all:
             for st_key in sentences[incident_key[3]]:
                 name = c_key + incident_key[3] + st_key + ".wav"
                 texts[name] = [sentences[incident_key[3]][st_key], speaker]
@@ -165,10 +179,14 @@ def gen_text(customers, menu, sentences, gen_all=False):
         # OrderMoreIncident
         if "5" in incidents and gen_all == False:
             st_key = sample_st_key(4)
-            name = c_key + incident_key[4] + ".wav"
+            # generate greeting
             greeting = sentences[incident_key[4]].get("s00", "")
-            texts[name] = [greeting + ' ' + sentences[incident_key[4]][st_key].replace("_", extra_order_st), speaker]
-        else:
+            name = c_key + incident_key[4] + "s00" + ".wav"
+            texts[name] = [greeting, speaker]
+            # generate sentence
+            name = c_key + incident_key[4] + ".wav"
+            texts[name] = [sentences[incident_key[4]][st_key].replace("_", extra_order_st), speaker]
+        elif gen_all:
             greeting = sentences[incident_key[4]].get("s00", "")
             for st_key in sentences[incident_key[4]]:
                 if st_key == "s00": continue
@@ -182,7 +200,7 @@ def gen_text(customers, menu, sentences, gen_all=False):
                 if food_key not in beverages: continue
                 name = c_key + incident_key[5] + food_key + ".wav"
                 texts[name] = [sentences[incident_key[5]][st_key].replace("_", food_key.replace("_", " ")), speaker]       
-        else:
+        elif gen_all:
             for st_key in sentences[incident_key[5]]:
                 for food_key in order:
                     if food_key not in beverages: continue
@@ -196,7 +214,7 @@ def gen_text(customers, menu, sentences, gen_all=False):
                 if food_key in beverages: continue
                 name = c_key + incident_key[5] + food_key + ".wav"
                 texts[name] = [sentences[incident_key[5]][st_key].replace("_", food_key.replace("_", " ")), speaker]       
-        else:
+        elif gen_all:
             for st_key in sentences[incident_key[6]]:
                 for food_key in order:
                     if food_key in beverages: continue
@@ -218,6 +236,7 @@ def read_customer(customers_text):
 
     # read and format customer info
     for sec in customers_ini:
+        sec_keys = list(customers_ini[sec].keys())
         if sec.lower() == "default": continue
         if "-Customer" in sec:
             g, c = sec.split("-")
@@ -229,11 +248,10 @@ def read_customer(customers_text):
             customers[name] = {}
             # we need to assign a speaker to each customer
             customers[name]["speaker"] = spk_idx[g_idx][c_idx]
-            customers[name]["meal_order"] = remove_comment(customers_ini[sec]["mealOrder"]).split(",")
-            customers[name]["extra_order"] = remove_comment(customers_ini[sec]["extraOrder"]).split(",")
-            customers[name]["replace_order"] = remove_comment(customers_ini[sec]["replaceOrder"]).split(",")
-            customers[name]["incidents"] = remove_comment(customers_ini[sec]["IncidentOrder"]).split(",")
-            
+            customers[name]["meal_order"] = remove_comment(customers_ini[sec]["mealorder"]).split(",") if "mealorder" in sec_keys else []
+            customers[name]["extra_order"] = remove_comment(customers_ini[sec]["extraorder"]).split(",") if "extraorder" in sec_keys else []
+            customers[name]["replace_order"] = remove_comment(customers_ini[sec]["replaceorder"]).split(",") if "replaceorder" in sec_keys else []
+            customers[name]["incidents"] = remove_comment(customers_ini[sec]["Incidentorder"]).split(",") if "incidentorder" in sec_keys else []
     return customers
 
 def remove_comment(value):
@@ -330,8 +348,9 @@ async def to_speech(request):
         menu = read_menu(req["menu"])
         customers = read_customer(req["customers"])
         texts = gen_text(customers, menu, sentences)   
-        
         # create a non-block sub-process to generate audioes
+        import pdb
+        pdb.set_trace()    
         p = create_job(to_speech_multi_proc, texts)
         ps.append(p)
         return web.Response(text="processing with pid %s"%str(p.pid))
