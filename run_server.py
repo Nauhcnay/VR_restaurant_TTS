@@ -349,8 +349,6 @@ async def to_speech(request):
         customers = read_customer(req["customers"])
         texts = gen_text(customers, menu, sentences)   
         # create a non-block sub-process to generate audioes
-        import pdb
-        pdb.set_trace()    
         p = create_job(to_speech_multi_proc, texts)
         ps.append(p)
         return web.Response(text="processing with pid %s"%str(p.pid))
