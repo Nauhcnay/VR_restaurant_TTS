@@ -8,8 +8,8 @@ import configparser
 import time
 import zipfile
 from tqdm import tqdm
-#python run_client_test.py  --speech --customer ./../CustTest.ini --output ./../../Assets/Resources/speech_audios/
-#python run_client_test.py --speech --customer ../Customer.ini
+#python run_client_test.py  --speech --customer ./../Customer.ini --output ./../../Assets/Resources/speech_audios/
+
 
 url_root = "http://164.90.158.133:8080"
 url_get_speech = "/to_speech"
