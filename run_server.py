@@ -11,6 +11,7 @@ from random import choice
 from aiohttp import web
 
 MAX_TASK = 4
+TRAVERSE = False # generate all possible voices if true
 '''
 text and speech generation
 '''
@@ -92,8 +93,10 @@ def order_to_text(order):
         return ", ".join(order_real_st), order_key
     else:
         return [], []
+def def_text_dinnerset(speakers, sentences):
+    pass
 
-def gen_text(customers, menu, sentences, gen_all=False):
+def gen_text_groups(customers, menu, sentences, gen_all=TRAVERSE):
     # return the dict of file name and text content and speaker list
     # if all is true, then generate all possible sentences
     texts = {}
@@ -232,8 +235,12 @@ def read_customer(customers_text):
     spk_idx = []
     group_nums = int(remove_comment(customers_ini["General"]["totCustGroup"]))
     for _ in range(group_nums):
-        spk_idx.append(random.sample(speakers_selected, len(speakers_selected)))
-
+        if TRAVERSE:
+            spk_idx.append(random.sample(speakers_selected, len(speakers_selected)))
+        else:
+            assert len(speakers_selected) >= 4
+            spk_idx.append(speakers_selected[0:4])
+    customers["speakers"] = speakers_selected[0:4]
     # read and format customer info
     for sec in customers_ini:
         sec_keys = list(customers_ini[sec].keys())
@@ -241,6 +248,7 @@ def read_customer(customers_text):
         if "-Customer" in sec:
             g, c = sec.split("-")
             g_idx = int(g.strip("Group")) # group index
+            if g_idx + 1 > group_nums: continue # skip the rest groups
             c_idx = int(c.strip("Customer")) -1 # customer index
             g = "g%d"%g_idx
             c = "c%d"%(c_idx + 1)
@@ -347,7 +355,7 @@ async def to_speech(request):
         sentences = read_sentences(req["sentences"])
         menu = read_menu(req["menu"])
         customers = read_customer(req["customers"])
-        texts = gen_text(customers, menu, sentences)   
+        texts = gen_text_groups(customers, menu, sentences)   
         # create a non-block sub-process to generate audioes
         p = create_job(to_speech_multi_proc, texts)
         ps.append(p)

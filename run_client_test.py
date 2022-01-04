@@ -101,10 +101,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--speech', action='store_true',
         help="get all speech audios in a zip file")
+    parser.add_argument("--samples", action='store_true',
+        help="generate samples speaked by all speakers")
+    parser.add_argument("--dinnerset", action='store_true',
+        help="generate all speeches for asking more dinner sets")
+
     parser.add_argument('--speaker', action='store_true',
         help="get all speaker id and put them into ./speaker.ini")
-    parser.add_argument("--menu", type=str, default='./Menu.ini',
-        help="the path to menu config file, default is ./Menu.ini")
+    parser.add_argument("--misc", type=str, default='./Misc.ini',
+        help="the path to misc config file, default is ./Misc.ini")
     parser.add_argument("--customers", type=str, default='./Customer (1).ini',
         help="the path to customer config file, default is ./Customer.ini")
     parser.add_argument("--sentences", type=str, default='./Sentences.ini',
@@ -113,13 +118,16 @@ if __name__ == "__main__":
         help="the path to save speaker keys, default is ./Speakers.ini")
     parser.add_argument("--output", type=str, default='./speech_audios',
         help="the path to save generated audios")
+
     args = parser.parse_args()
 
     # send request and get result
     if args.speech:
         get_speeches(args.menu, args.customers, args.sentences, args.output)
-    elif args.speaker:
+    if args.speaker:
         get_speakers(args.speakers)
-    else:
-        print("Log:\tno commands found, please indicate one operation you want")
-        parser.print_help()
+    if args.samples:
+        pass
+    if args.dinnerset:
+        pass
+
