@@ -8,6 +8,8 @@ import configparser
 import time
 import zipfile
 from tqdm import tqdm
+#python run_client_test.py  --speech --customer ./../Customer.ini --output ./../../Assets/Resources/speech_audios/
+
 
 url_root = "http://164.90.158.133:8080"
 url_get_speech = "/to_speech"
@@ -15,7 +17,7 @@ url_get_speaker = "/get_speaker"
 url_get_audios = "/is_ready"
 path_menu = './Menu.ini'
 path_st = './Sentences.ini'
-path_cus = './Customer.ini'
+path_cus = './CustTest.ini'
 
 # read the ini file to string
 def read_config(path_to_ini):
