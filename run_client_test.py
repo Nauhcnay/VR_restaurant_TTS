@@ -9,7 +9,8 @@ import time
 import zipfile
 from tqdm import tqdm
 #python run_client_test.py  --speech --customer ./../Customer.ini --output ./../../Assets/Resources/speech_audios/
-
+#--speechini 根据ini文件生成语音
+#--hiddenrequestitem 生成补充餐具的语音
 
 url_root = "http://164.90.158.133:8080"
 url_get_speech = "/to_speech"
