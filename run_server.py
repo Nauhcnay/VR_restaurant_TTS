@@ -96,12 +96,11 @@ def order_to_text(order):
 def def_text_dinnerset(speakers, sentences):
     pass
 
-def gen_text_groups(customers, menu, sentences, gen_all=TRAVERSE):
+def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
     # return the dict of file name and text content and speaker list
     # if all is true, then generate all possible sentences
     texts = {}
-    beverages = [f.lower() for f in menu["beverages"]]
-
+    beverages = [f.lower() for f in misc["beverages"].split(",")]
     def sample_st_key(iidx):
         st_keys = list(sentences[incident_key[iidx]].keys())
         try:
@@ -113,6 +112,7 @@ def gen_text_groups(customers, menu, sentences, gen_all=TRAVERSE):
         return st_key
 
     for c_key in customers:
+        if c_key == "speakers": continue
         incident_key = list(sentences.keys())
         incident_key.sort()
         speaker = customers[c_key]["speaker"]
@@ -215,8 +215,8 @@ def gen_text_groups(customers, menu, sentences, gen_all=TRAVERSE):
             st_key = sample_st_key(6)
             for food_key in order:
                 if food_key in beverages: continue
-                name = c_key + incident_key[5] + food_key + ".wav"
-                texts[name] = [sentences[incident_key[5]][st_key].replace("_", food_key.replace("_", " ")), speaker]       
+                name = c_key + incident_key[6] + food_key + ".wav"
+                texts[name] = [sentences[incident_key[6]][st_key].replace("_", food_key.replace("_", " ")), speaker]       
         elif gen_all:
             for st_key in sentences[incident_key[6]]:
                 for food_key in order:
@@ -240,6 +240,7 @@ def read_customer(customers_text):
         else:
             assert len(speakers_selected) >= 4
             spk_idx.append(speakers_selected[0:4])
+    
     customers["speakers"] = speakers_selected[0:4]
     # read and format customer info
     for sec in customers_ini:
@@ -281,16 +282,16 @@ def read_sentences(sentences_text):
             remove_comment(sentences_ini[sec][st_key])
     return st_template        
 
-def read_menu(menu_text):
+def read_misc(misc_text):
     # returns the dict mapping from key to food name
-    menu_ini = configparser.ConfigParser()
-    menu_ini.read_string(menu_text)
-    menu = {}
-    for sec in menu_ini:
+    misc_ini = configparser.ConfigParser()
+    misc_ini.read_string(misc_text)
+    misc = {}
+    for sec in misc_ini:
         if sec.lower() == "default": continue
-        for key in menu_ini[sec]:
-            menu[key] = remove_comment(menu_ini[sec][key])
-    return menu
+        for key in misc_ini[sec]:
+            misc[key] = remove_comment(misc_ini[sec][key].lower())
+    return misc
 '''
 HTTP server
 '''
@@ -353,9 +354,34 @@ async def to_speech(request):
     req = await request.json()
     if len(ps) <= MAX_TASK:
         sentences = read_sentences(req["sentences"])
-        menu = read_menu(req["menu"])
+        misc = read_misc(req["misc"])
         customers = read_customer(req["customers"])
-        texts = gen_text_groups(customers, menu, sentences)   
+        texts = gen_text_groups(customers, misc, sentences)
+        # create a non-block sub-process to generate audioes
+        p = create_job(to_speech_multi_proc, texts)
+        ps.append(p)
+        return web.Response(text="processing with pid %s"%str(p.pid))
+    else:
+        return web.Response(status=404, text="server busy, please try again later")
+
+@routes.post("/to_speech_aug")
+async def to_speech_aug(request):
+    req = await request.json()
+    if len(ps) <= MAX_TASK:
+        sentences = read_sentences(req["sentences"])
+        texts = {}
+        for i in range(1,5):
+            c_key = "c%d"%i
+            i8 = "i8"
+            i9 = "i9"
+            # random pickup one sentence
+            st_keys = list(sentences[i8].keys())
+            st_key = random.sample(st_keys, 1)[0]
+            for item_key in sentences[i9]:
+                food_key = sentences[i9][item_key].lower()
+                name = c_key+i8+food_key+".wav"
+                st = sentences[i8][st_key].replace("_", food_key.replace("_", " "))
+                texts[name] = [st, speakers_selected[i-1]]
         # create a non-block sub-process to generate audioes
         p = create_job(to_speech_multi_proc, texts)
         ps.append(p)
