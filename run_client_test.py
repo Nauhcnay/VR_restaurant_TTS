@@ -131,7 +131,7 @@ if __name__ == "__main__":
         help="get all speech audios in a zip file by reading the config (ini) file")
     parser.add_argument("--samples", action='store_true',
         help="generate samples speaked by all speakers")
-    parser.add_argument("--dinnerset", action='store_true',
+    parser.add_argument("--hiddenrequestitem", action='store_true',
         help="generate all speeches for asking more dinner sets")
     parser.add_argument('--speaker', action='store_true',
         help="get all speaker id and put them into ./speaker.ini")
@@ -161,14 +161,14 @@ if __name__ == "__main__":
     if args.speaker:
         get_speakers(args.speakers)
         no_cmd = False
-    if args.samples:
+    if args.hiddenrequestitem:
         get_speeches_aug(args.sentences, args.output)
         no_cmd = False
     if args.traverse:
-        get_speeches_aug(args.misc, args.output)
+        pass
         no_cmd = False
     if args.speech:
-        get_speeches_aug(args.misc, args.output)
+        pass
         no_cmd = False
     if no_cmd:
         parser.print_help()
