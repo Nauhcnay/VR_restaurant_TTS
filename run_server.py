@@ -55,7 +55,7 @@ def text_to_speech(text, speaker, outpath):
     cmd = "tts --model_name \"tts_models/en/vctk/vits\" --text "
     cmd += "\""+text+"\""
     cmd += " --speaker_idx %s"%speaker
-    cmd += " --use_cuda true"
+    # cmd += " --use_cuda true"
     cmd += " --out_path " + outpath
     os.system(cmd)
 
@@ -435,7 +435,7 @@ async def to_speech_stuff(request):
         return web.Response(status=404, text="server busy, please try again later")    
 
 @routes.post("/to_speech_misc")
-async def to_speech_stuff(request):
+async def to_speech_misc(request):
     req = await request.json()
     if len(ps) <= MAX_TASK:
         misc = read_misc(req["misc"])
@@ -451,10 +451,12 @@ async def to_speech_stuff(request):
             for st_key in misc["samplesentence"]:
                 if "s00" in st_key.lower() or "spk" in st_key.lower(): continue
                 st = remove_comment(misc["samplesentence"][st_key])
-                spk_key = int(remove_comment(misc["samplesentence"][st_key.replace("s", "spk")]))
-                name = st_key + "_" + "spk%d"%spk_key + ".wav"
-                speaker = remove_comment(speakers["%03d"%spk_key])
-                texts[name] = [st, speaker]
+                spk_keys = remove_comment(misc["samplesentence"][st_key.replace("s", "spk")]).split(",")
+                spk_keys = [int(k) for k in spk_keys]
+                for spk_key in spk_keys:
+                    name = st_key + "_" + "spk%d"%spk_key + ".wav"
+                    speaker = remove_comment(speakers["%03d"%spk_key])
+                    texts[name] = [st, speaker]
             # create a non-block sub-process to generate audioes
         p = create_job(to_speech_multi_proc, texts)
         ps.append(p)
