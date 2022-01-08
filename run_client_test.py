@@ -8,13 +8,37 @@ import configparser
 import time
 import zipfile
 from tqdm import tqdm
-#python run_client_test.py  --speech --customer ./../Customer.ini --output ./../../Assets/Resources/speech_audios/
-#--speechini 根据ini文件生成语音
-#--hiddenrequestitem 生成补充餐具的语音
+# usage:
+# python run_client_test.py -c -customer ./../Customer.ini -o ./../../Assets/Resources/speech_audios/
+'''
+usage: run_client_test.py [-h] [-a] [-c] [-d] [-s] [-g] [-t] [-ms] [-o O]
+                          [-misc MISC] [-customers CUSTOMERS]
+                          [-sentences SENTENCES] [-speakers SPEAKERS]
+                          [-stuff STUFF]
 
+optional arguments:
+  -h, --help            show this help message and exit
+  -a                    all speeches for customer and stuff, including hidden
+                        request events, so this command equivalent to -c -d -s
+  -c                    customer's speech
+  -d                    hidden event speeches (asking more dinner sets)
+  -s                    stuff response speeches
+  -g                    get all speaker id and save to ./speaker.ini
+  -t                    traverse sample sentence by all speakers
+  -ms                   misc speeches (could be any text speaked by any speaker)
+                        specified in 'misc.ini'
+  -o O                  the path to save generated audios
+  -misc MISC            misc config, default is ./Misc.ini
+  -customers CUSTOMERS  customer event config, default is ./CustTest.ini
+  -sentences SENTENCES  sentence template config, default is ./Sentences.ini
+  -speakers SPEAKERS    speaker list, default is ./Speakers.ini
+  -stuff STUFF          stuff event config, default is ./StaffRespond.ini
+'''
 url_root = "http://164.90.158.133:8080"
 url_get_speech = "/to_speech"
 url_get_speech_aug = "/to_speech_aug"
+url_get_speech_stuff = "/to_speech_stuff"
+url_get_speech_misc = "/to_speech_misc"
 url_get_speaker = "/get_speaker"
 url_get_audios = "/is_ready"
 
@@ -41,13 +65,13 @@ def get_speeches(misc, customers, sentences, output):
     req["customers"] = read_config(customers)
     req["sentences"] = read_config(sentences)
     result = requests.post(url_root+url_get_speech, json=req)
-    prog_old = 0
-    prog_new = 0
     # download the file when it is ready
     # or maybe we can print a progress bar here
-    post_to_url(result, url_root+url_get_audios)
+    post_to_url(result, url_root+url_get_audios, output)
 
-def post_to_url(result, url):
+def post_to_url(result, url, output):
+    prog_old = 0
+    prog_new = 0
     if result.status_code != 200:
         print("Log:\t%s"%result.text)
     else:
@@ -59,24 +83,23 @@ def post_to_url(result, url):
             while True:
                 # update every 10s
                 time.sleep(5)
-                result = requests.post(url, data=pid, stream=True)
-                if result.status_code == 200:
+                result_check = requests.post(url, data=pid, stream=True)
+                if result_check.status_code == 200:
                     bar.update(100 - prog_old)
                     if os.path.exists(output) == False:
                         os.mkdir(output)
                     zip_path_temp = os.path.join(output, "speech_audios.zip")
                     with open(zip_path_temp, "wb") as f:
-                        f.write(result.content)
+                        f.write(result_check.content)
                     with zipfile.ZipFile(zip_path_temp, 'r') as zip_ref:
                         zip_ref.extractall(output)
-
                     # clean up
                     os.remove(zip_path_temp)
                     break
                 else:
                     try:
                         prog_old = prog_new
-                        prog_new = float(result.text)
+                        prog_new = float(result_check.text)
                         bar.update(prog_new - prog_old)
                     except:
                         pass
@@ -86,21 +109,29 @@ def get_speeches_aug(sentences, output):
     req = {}
     req["sentences"] = read_config(sentences)
     result = requests.post(url_root+url_get_speech_aug, json=req)
-    prog_old = 0
-    prog_new = 0
     # download the file when it is ready
     # or maybe we can print a progress bar here
-    post_to_url(result, url_root+url_get_audios)
+    post_to_url(result, url_root+url_get_audios, output)
 
-def get_speeches_traverse(sentences, output):
+def get_speeches_stuff(stuff, output):
     req = {}
-    req["sentences"] = read_config(sentences)
-    result = requests.post(url_root+url_get_speech_aug, json=req)
-    prog_old = 0
-    prog_new = 0
+    req["stuff"] = read_config(stuff)
+    result = requests.post(url_root+url_get_speech_stuff, json=req)
     # download the file when it is ready
     # or maybe we can print a progress bar here
-    post_to_url(result, url_root+url_get_audios)
+    post_to_url(result, url_root+url_get_audios, output)
+
+def get_speeches_misc(speaker, misc, output, traverse=False):
+    req = {}
+    req["misc"] = read_config(misc)
+    if os.path.exists(speaker) == False:
+        get_speakers(speaker)
+    req["speakers"] = read_config(speaker)
+    req["traverse"] = traverse
+    result = requests.post(url_root+url_get_speech_misc, json=req)
+    # download the file when it is ready
+    # or maybe we can print a progress bar here
+    post_to_url(result, url_root+url_get_audios, output)
 
 
 # get and save speakers into ./speakers.ini
@@ -128,48 +159,69 @@ def verify_speeches(misc, customers, sentences):
 if __name__ == "__main__":
     # parse cmd lines
     parser = argparse.ArgumentParser()
-    parser.add_argument('--speechini', action='store_true',
-        help="get all speech audios in a zip file by reading the config (ini) file")
-    parser.add_argument("--samples", action='store_true',
-        help="generate samples speaked by all speakers")
-    parser.add_argument("--hiddenrequestitem", action='store_true',
-        help="generate all speeches for asking more dinner sets")
-    parser.add_argument('--speaker', action='store_true',
-        help="get all speaker id and put them into ./speaker.ini")
-    parser.add_argument('--traverse', action='store_true',
-        help="generate sample sentence by all speakers")
-    parser.add_argument('--speech', action='store_true',
-        help="generate speech by given sample sentence and speaker in 'misc.ini'")
+    # main functions
+    parser.add_argument('-a', action='store_true',
+        help="all speeches for customer and stuff, including hidden request events, so this command equivalent to -c -d -s")
+    parser.add_argument('-c', action='store_true',
+        help="customer's speech")
+    parser.add_argument("-d", action='store_true',
+        help="hidden event speeches (asking more dinner sets)")
+    parser.add_argument('-s', action='store_true',
+        help="stuff response speeches")
 
-    parser.add_argument("--misc", type=str, default='./Misc.ini',
-        help="the path to misc config file, default is ./Misc.ini")
-    parser.add_argument("--customers", type=str, default='./CustTest.ini',
-        help="the path to customer config file, default is ./CustTest.ini")
-    parser.add_argument("--sentences", type=str, default='./Sentences.ini',
-        help="the path to sentence template file, default is ./Sentences.ini")
-    parser.add_argument("--speakers", type=str, default='./Speakers.ini',
-        help="the path to save speaker keys, default is ./Speakers.ini")
-    parser.add_argument("--output", type=str, default='./speech_audios',
+    # help functions
+    parser.add_argument('-g', action='store_true',
+        help="get all speaker id and save to ./speaker.ini")
+    parser.add_argument('-t', action='store_true',
+        help="traverse sample sentence by all speakers")
+    parser.add_argument('-ms', action='store_true',
+        help="misc speeches (could be any text speaked by any speaker) specified in 'misc.ini'")
+    
+    ## file pathes
+    parser.add_argument("-o", type=str, default='./speech_audios',
         help="the path to save generated audios")
-
+    # don't change the reset path unless necessary
+    parser.add_argument("-misc", type=str, default='./Misc.ini',
+        help="misc config, default is ./Misc.ini")
+    parser.add_argument("-customers", type=str, default='./CustTest.ini',
+        help="customer event config, default is ./CustTest.ini")
+    parser.add_argument("-sentences", type=str, default='./Sentences.ini',
+        help="sentence template config, default is ./Sentences.ini")
+    parser.add_argument("-speakers", type=str, default='./Speakers.ini',
+        help="speaker list, default is ./Speakers.ini")
+    parser.add_argument("-stuff", type=str, default='./StaffRespond.ini',
+        help="stuff event config, default is ./StaffRespond.ini")
     args = parser.parse_args()
 
     # send request and get result
     no_cmd = True
-    if args.speechini:
-        get_speeches(args.misc, args.customers, args.sentences, args.output)
+    # main functions
+    if args.a:
+        get_speeches(args.misc, args.customers, args.sentences, args.o)
+        get_speeches_aug(args.sentences, args.o)
+        pass # for the stuff speeches
         no_cmd = False
-    if args.speaker:
+    if args.c:
+        get_speeches(args.misc, args.customers, args.sentences, args.o)
+        no_cmd = False
+    if args.d:
+        get_speeches_aug(args.sentences, args.o)
+        no_cmd = False
+    if args.s:
+        get_speeches_stuff(args.stuff, args.o)
+        no_cmd = False
+
+    # help functions
+    if args.g:
         get_speakers(args.speakers)
         no_cmd = False
-    if args.hiddenrequestitem:
-        get_speeches_aug(args.sentences, args.output)
+    if args.t:
+        get_speeches_misc(args.speakers, args.misc, args.o, traverse = True)
         no_cmd = False
-    if args.traverse:
-        pass
+    if args.ms:
+        get_speeches_misc(args.speakers, args.misc, args.o, traverse = False)
         no_cmd = False
-    if args.speech:
-        pass
-        no_cmd = False
+
+    # if no arguments, print help menu
     if no_cmd:
         parser.print_help()

@@ -100,7 +100,7 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
     # return the dict of file name and text content and speaker list
     # if all is true, then generate all possible sentences
     texts = {}
-    beverages = [f.lower() for f in misc["beverages"].split(",")]
+    beverages = [f.lower() for f in misc["beverages"]["beverages"].split(",")]
     def sample_st_key(iidx):
         st_keys = list(sentences[incident_key[iidx]].keys())
         try:
@@ -282,6 +282,29 @@ def read_sentences(sentences_text):
             remove_comment(sentences_ini[sec][st_key])
     return st_template        
 
+def read_stuff(stuff_text):
+    # return sentence template list per incidents
+    stuff_ini = configparser.ConfigParser()
+    stuff_ini.read_string(stuff_text)
+    stuff_template = {}
+    idx = 1
+    stuff_template["speakers"] = {}
+    stuff_template["speakers"]["m"] = stuff_ini["General"]["m_speakerid"]
+    stuff_template["speakers"]["f"] = stuff_ini["General"]["f_speakerid"]
+    for sec in stuff_ini:
+        if sec.lower() == "default": continue
+        if sec.lower() == "general": continue
+        assert "staffrespond" in sec.lower()
+        name = "sf%d"%idx
+        idx += 1
+        stuff_template[name] = {}
+        for stuff_key in stuff_ini[sec].keys():
+            if "tot" in stuff_key.lower(): continue # we don't verify the count number
+            stuff_template[name][stuff_key] = \
+            remove_comment(stuff_ini[sec][stuff_key])
+    return stuff_template
+
+
 def read_misc(misc_text):
     # returns the dict mapping from key to food name
     misc_ini = configparser.ConfigParser()
@@ -289,8 +312,9 @@ def read_misc(misc_text):
     misc = {}
     for sec in misc_ini:
         if sec.lower() == "default": continue
+        misc[sec.lower()] = {}
         for key in misc_ini[sec]:
-            misc[key] = remove_comment(misc_ini[sec][key].lower())
+            misc[sec.lower()][key.lower()] = remove_comment(misc_ini[sec][key].lower())
     return misc
 '''
 HTTP server
@@ -389,9 +413,55 @@ async def to_speech_aug(request):
     else:
         return web.Response(status=404, text="server busy, please try again later")
 
-@routes.get("/talk")
-async def talk(request):
-    return web.Response(text="under construction")
+@routes.post("/to_speech_stuff")
+async def to_speech_stuff(request):
+    req = await request.json()
+    if len(ps) <= MAX_TASK:
+        stuff = read_stuff(req["stuff"])
+        texts = {}
+        speakers = list(stuff["speakers"].keys())
+        for resp_key in stuff.keys():
+            if "speakers" in resp_key.lower(): continue
+            for st_key, st in stuff[resp_key].items():    
+                for spk_key in speakers:
+                    name = spk_key+resp_key+st_key+".wav"
+                    speaker = remove_comment(stuff["speakers"][spk_key])
+                    texts[name] = [st, speaker]
+        # create a non-block sub-process to generate audioes
+        p = create_job(to_speech_multi_proc, texts)
+        ps.append(p)
+        return web.Response(text="processing with pid %s"%str(p.pid))
+    else:
+        return web.Response(status=404, text="server busy, please try again later")    
+
+@routes.post("/to_speech_misc")
+async def to_speech_stuff(request):
+    req = await request.json()
+    if len(ps) <= MAX_TASK:
+        misc = read_misc(req["misc"])
+        speakers = read_misc(req["speakers"])["speakers"]
+        traverse = req["traverse"]
+        texts = {}
+        if traverse:
+            sameple_st = remove_comment(misc["samplesentence"]["s00"])
+            for spk_key in speakers:
+                name = "traverse_" + spk_key + ".wav"
+                texts[name] = [sameple_st, speakers[spk_key]]
+        else:
+            for st_key in misc["samplesentence"]:
+                if "s00" in st_key.lower() or "spk" in st_key.lower(): continue
+                st = remove_comment(misc["samplesentence"][st_key])
+                spk_key = int(remove_comment(misc["samplesentence"][st_key.replace("s", "spk")]))
+                name = st_key + "_" + "spk%d"%spk_key + ".wav"
+                speaker = remove_comment(speakers["%03d"%spk_key])
+                texts[name] = [st, speaker]
+            # create a non-block sub-process to generate audioes
+        p = create_job(to_speech_multi_proc, texts)
+        ps.append(p)
+        return web.Response(text="processing with pid %s"%str(p.pid))
+    else:
+        return web.Response(status=404, text="server busy, please try again later")    
+
 
 # need fix later
 @routes.post("/is_ready")
@@ -431,8 +501,9 @@ def to_speech_multi_proc(texts):
         text_count += 1
 
     shutil.make_archive("./audio_output_%s"%(str(pid)), 'zip', "./audio_output_%s"%(str(pid)))
-    
+
     # clean up
+    print("Log:\tclean up temp files")
     os.remove("progress_%s.txt"%str(pid))
     shutil.rmtree("./audio_output_%s"%(str(pid)))
 
