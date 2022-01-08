@@ -199,7 +199,7 @@ if __name__ == "__main__":
     if args.a:
         get_speeches(args.misc, args.customers, args.sentences, args.o)
         get_speeches_aug(args.sentences, args.o)
-        pass # for the stuff speeches
+        get_speeches_stuff(args.stuff, args.o)
         no_cmd = False
     if args.c:
         get_speeches(args.misc, args.customers, args.sentences, args.o)
