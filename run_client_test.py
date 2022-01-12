@@ -9,7 +9,8 @@ import time
 import zipfile
 from tqdm import tqdm
 # usage:
-# python run_client_test.py -c -customer ./../Customer.ini -o ./../../Assets/Resources/speech_audios/
+# python run_client_test.py -c  -customers ./../Customer.ini -o ./../../Assets/Resources/speech_audios/
+#python run_client_test.py -d
 '''
 usage: run_client_test.py [-h] [-a] [-c] [-d] [-s] [-g] [-t] [-ms] [-o O]
                           [-misc MISC] [-customers CUSTOMERS]
