@@ -6,6 +6,7 @@ import configparser
 import copy
 import shutil
 import random
+import enmu
 from multiprocessing import Process
 from random import choice
 from aiohttp import web
@@ -42,6 +43,20 @@ first_st = ["I wish to, emmmmmmmmmmm, have a ", "em, I want a ", "I'd like a ", 
 rest_st = [" and a ", ". I also want a ", " with a ", " ", ", emmmmmmmmmmm, and the ", ". Oh, and also a "]
 end_st = [". That's all, thanks", ". Thank you!", ". Thanks!"]
 '''
+
+# enmuration for incidents
+class Incident(enum.Enum):
+    ReadyToOrder = "1"
+    WantFood = "2"
+    CheckOut = "3"
+    CreditCard = "4"
+    OrderMore = "5"
+    DropDrink = "6"
+    FoodReplace = "7"
+    # This two seems not been used for now
+    HiddenRequest = "8"
+    Idle = "9"
+
 def to_base64():
     '''
     A helper function to read the wav file and convert it to base64
@@ -110,7 +125,8 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
             pass
         st_key = random.sample(st_keys, 1)[0]
         return st_key
-
+    incident_enum = 
+    
     for c_key in customers:
         if c_key == "speakers": continue
         incident_key = list(sentences.keys())
@@ -121,7 +137,8 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
         extra_order_st, extra_order = order_to_text(customers[c_key]["extra_order"])
         _, replace_order = order_to_text(customers[c_key]["replace_order"])
         # ReadyToOrder
-        if "1" in incidents and gen_all == False:
+        
+        if Incident.ReadyToOrder in incidents and gen_all == False:
             greeting = sentences[incident_key[0]].get("s00", "")
             st_key = sample_st_key(0)
             # generate greeting
@@ -138,7 +155,7 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
                 texts[name] = [greeting + ' ' + sentences[incident_key[0]][st_key].replace("_", order_st), speaker]
 
         # WantFoodIncident
-        if "2" in incidents and gen_all == False:
+        if Incident.WantFood in incidents and gen_all == False:
             greeting = sentences[incident_key[1]].get("s00", "")
             st_key = sample_st_key(1)
             # generate greeting
@@ -156,7 +173,7 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
                     texts[name] = [greeting + ' ' + sentences[incident_key[1]][st_key].replace("_", order[food_key]), speaker]
 
         # CheckOutIncident
-        if "3" in incidents and gen_all == False:
+        if Incident.CheckOut in incidents and gen_all == False:
             st_key = sample_st_key(2)
             # generate greeting
             name = c_key + incident_key[2] + "s00" + ".wav"
@@ -170,7 +187,7 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
                 texts[name] = [sentences[incident_key[2]][st_key], speaker]
 
         # CreditCardIncident
-        if "4" in incidents and gen_all == False:
+        if Incident.CheckOut in incidents and gen_all == False:
             st_key = sample_st_key(3)
             name = c_key + incident_key[3] + ".wav"
             texts[name] = [sentences[incident_key[3]][st_key], speaker]
@@ -180,7 +197,7 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
                 texts[name] = [sentences[incident_key[3]][st_key], speaker]
 
         # OrderMoreIncident
-        if "5" in incidents and gen_all == False:
+        if Incident.OrderMore in incidents and gen_all == False:
             st_key = sample_st_key(4)
             # generate greeting
             greeting = sentences[incident_key[4]].get("s00", "")
@@ -197,7 +214,7 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
                 texts[name] = [greeting + ' ' + sentences[incident_key[4]][st_key].replace("_", extra_order_st), speaker]
 
         # DropDrinkIncident
-        if "6" in incidents and gen_all == False:
+        if Incident.DropDrink in incidents and gen_all == False:
             st_key = sample_st_key(5)
             for food_key in order:
                 if food_key not in beverages: continue
@@ -211,7 +228,7 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
                     texts[name] = [sentences[incident_key[5]][st_key].replace("_", food_key.replace("_", " ")), speaker]
 
         # FoodReplacementIncident
-        if "7" in incidents and gen_all == False:
+        if Incident.FoodReplace in incidents and gen_all == False:
             st_key = sample_st_key(6)
             for food_key in order:
                 if food_key in beverages: continue
