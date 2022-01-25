@@ -6,7 +6,7 @@ import configparser
 import copy
 import shutil
 import random
-import enmu
+import enum
 from multiprocessing import Process
 from random import choice
 from aiohttp import web
@@ -125,7 +125,6 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
             pass
         st_key = random.sample(st_keys, 1)[0]
         return st_key
-    incident_enum = 
     
     for c_key in customers:
         if c_key == "speakers": continue
