@@ -10,7 +10,7 @@ import zipfile
 from tqdm import tqdm
 # usage:
 # python run_client_test.py -c  -customers ./../Customer.ini -o ./../../Assets/Resources/speech_audios/
-#python run_client_test.py -d
+#python run_client_test.py -s
 '''
 usage: run_client_test.py [-h] [-a] [-c] [-d] [-s] [-g] [-t] [-ms] [-o O]
                           [-misc MISC] [-customers CUSTOMERS]
@@ -23,7 +23,7 @@ optional arguments:
                         request events, so this command equivalent to -c -d -s
   -c                    customer's speech
   -d                    hidden event speeches (asking more dinner sets)
-  -s                    stuff response speeches
+  -s                    staff response speeches
   -g                    get all speaker id and save to ./speaker.ini
   -t                    traverse sample sentence by all speakers
   -ms                   misc speeches (could be any text speaked by any speaker)
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", action='store_true',
         help="hidden event speeches (asking more dinner sets)")
     parser.add_argument('-s', action='store_true',
-        help="stuff response speeches")
+        help="staff response speeches")
 
     # help functions
     parser.add_argument('-g', action='store_true',
