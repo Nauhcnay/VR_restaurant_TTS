@@ -162,7 +162,11 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
             texts[name] = [greeting, speaker]
             for food_key in order:
                 name = c_key + incident_key[1] + food_key + ".wav"
-                texts[name] = [sentences[incident_key[1]][st_key].replace("_", food_key.replace("_", " ")), speaker]   
+                texts[name] = [sentences[incident_key[1]][st_key].replace("_", food_key.replace("_", " ")), speaker]
+            # also add foods in extra order
+            for food_key in extra_order:
+                name = c_key + incident_key[1] + food_key + ".wav"
+                texts[name] = [sentences[incident_key[1]][st_key].replace("_", food_key.replace("_", " ")), speaker]
         elif gen_all:
             greeting = sentences[incident_key[1]].get("s00", "")
             for st_key in sentences[incident_key[1]]:
@@ -410,7 +414,7 @@ async def to_speech_aug(request):
     if len(ps) <= MAX_TASK:
         sentences = read_sentences(req["sentences"])
         texts = {}
-        for i in range(1,5):
+        for i in range(0,4):
             c_key = "c%d"%i
             i8 = "i8"
             i9 = "i9"
