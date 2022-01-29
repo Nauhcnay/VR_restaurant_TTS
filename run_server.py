@@ -515,7 +515,11 @@ def to_speech_multi_proc(texts):
         file_path = "./audio_output_%s/"%pid
         if os.path.exists(file_path) == False:
             os.mkdir(file_path)
-        text_to_speech(text, speaker, os.path.join(file_path, file_name))
+        try:
+            text_to_speech(text, speaker, os.path.join(file_path, file_name))
+        except:
+            # do nothing 
+            pass
         
         # record the progress
         with open("progress_%s.txt"%str(pid), "w") as f:
