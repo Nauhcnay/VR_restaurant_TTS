@@ -1,2 +1,10 @@
-
+IniFile.py
+TTS
+foods.json
+*.zip
+models
+*.txt
+CustGroupLoader.cs
+Customer (1).ini
 *.wav
+frp_0.36.0_windows_amd64

@@ -144,13 +144,13 @@ def gen_text_groups(customers, misc, sentences, gen_all=TRAVERSE):
             name = c_key + incident_key[0] + "s00" + ".wav"
             texts[name] = [greeting, speaker]
             # generate sentence
-            name = c_key + incident_key[0] + ".wav"
+            name = c_key + incident_key[0] + "_" + "_".join(order) + ".wav"
             texts[name] = [sentences[incident_key[0]][st_key].replace("_", order_st), speaker]
         elif gen_all:
             for st_key in sentences[incident_key[0]]:
                 if st_key == "s00": continue
                 greeting = sentences[incident_key[0]].get("s00", "")
-                name = c_key + incident_key[0] + st_key + ".wav"
+                name = c_key + incident_key[0] + st_key + "_" + "_".join(order) + ".wav"
                 texts[name] = [greeting + ' ' + sentences[incident_key[0]][st_key].replace("_", order_st), speaker]
 
         # WantFoodIncident
