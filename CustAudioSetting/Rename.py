@@ -7,13 +7,13 @@ import sys
 #if __name__ == "__main__":
     
 folder =sys.argv[1]
-path  = "c:\\Users\\z5308\\Desktop\\workplaceVR\\Input\\VR_restaurant_TTS\\CustAudioSetting\\"+ "{0}\\".format(folder)
+path  = "C:\\Users\\z5308\\Desktop\\Workplace_VR_projects\\workplaceVR\\Input\\VR_restaurant_TTS\\CustAudioSetting\\"+ "{0}\\".format(folder)
 #os.getcwd()
 for file in os.listdir(path):
     print(file)
-    if(file.endswith("s00.wav")):
-         os.remove(path+file)
-    elif(file.startswith("g")):
+    # if(file.endswith("s00.wav")):
+    #       os.remove(path+file)
+    if(file.startswith("g")):
         s =  file.replace("g", "",1)
         s = s.strip('0123456789')
         print(s)

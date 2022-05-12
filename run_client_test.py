@@ -9,13 +9,13 @@ import time
 import zipfile
 from tqdm import tqdm
 # usage:
-#python run_client_test.py -c  -customers ./CustAudioSetting/T2_D_Audio.ini -o ./CustAudioSetting/T2_D/
+#python run_client_test.py -c  -customers ./CustAudioSetting/T1_D_Audio.ini -o ./CustAudioSetting/T1_D/
 # python run_client_test.py -c  -customers ./../Customer.ini -o ./../../Assets/Resources/speech_audios/
 #python run_client_test.py -d -o./hiddenrequest/ 
 #python run_client_test.py -s -o ./../../Assets/Resources/StaffRespond/
 # python run_client_test.py -ms -o ./test/ 
 #python run_client_test.py -t -speakers Partial_Speakers.ini -o ./test/ 
-
+#python run_client_test.py -s 
 '''
 usage: run_client_test.py [-h] [-a] [-c] [-d] [-s] [-g] [-t] [-ms] [-o O]
                           [-misc MISC] [-customers CUSTOMERS]
