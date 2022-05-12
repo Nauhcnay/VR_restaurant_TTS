@@ -40,7 +40,8 @@ optional arguments:
   -speakers SPEAKERS    speaker list, default is ./Speakers.ini
   -stuff STUFF          stuff event config, default is ./StaffRespond.ini
 '''
-url_root = "http://164.90.158.133:8080"
+# url_root = "http://164.90.158.133:8080"
+url_root = "http://127.0.0.1:8080"
 url_get_speech = "/to_speech"
 url_get_speech_aug = "/to_speech_aug"
 url_get_speech_stuff = "/to_speech_stuff"

@@ -10,6 +10,10 @@ import enum
 from multiprocessing import Process
 from random import choice
 from aiohttp import web
+#cd env\Scripts
+#activate.bat
+#cd ..\..
+#python run_server.py
 
 MAX_TASK = 4
 TRAVERSE = False # generate all possible voices if true
@@ -516,7 +520,7 @@ def to_speech_multi_proc(texts):
         if os.path.exists(file_path) == False:
             os.mkdir(file_path)
         try:
-            text_to_speech(text, speaker, os.path.join(file_path, file_name))
+            text_to_speech(text, speaker, os.path.join(file_path, file_name.split("_")[0])+".wav") # update mic file name to num.wav
         except:
             # do nothing 
             pass
