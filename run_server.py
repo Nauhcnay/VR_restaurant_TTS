@@ -10,11 +10,16 @@ import enum
 from multiprocessing import Process
 from random import choice
 from aiohttp import web
+
+#if run local python
 #cd env\Scripts
 #activate.bat
 #cd ..\..
 #python run_server.py
 
+#otherwise, 
+# conda activate speaker
+#python run_server.py
 MAX_TASK = 4
 TRAVERSE = False # generate all possible voices if true
 '''
